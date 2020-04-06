@@ -1,4 +1,4 @@
-//random read
+//Random read
 #include <stdio.h>
 #include <sys/types.h>
 #include <time.h>
