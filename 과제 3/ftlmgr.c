@@ -9,6 +9,7 @@ FILE *flashfp;	// fdevicedriver.c에서 사용
 int dd_erase(int pbn);
 int dd_write(int ppn, char *pagebuf);
 int dd_read(int ppn, char *pagebuf);
+
 //
 // 이 함수는 FTL의 역할 중 일부분을 수행하는데 물리적인 저장장치 flash memory에 Flash device driver를 이용하여 데이터를
 // 읽고 쓰거나 블록을 소거하는 일을 한다 (동영상 강의를 참조).
@@ -25,7 +26,7 @@ int main(int argc, char *argv[])
 	// flash memory 파일 생성: 위에서 선언한 flashfp를 사용하여 flash 파일을 생성한다. 그 이유는 fdevicedriver.c에서 
 	//                 flashfp 파일포인터를 extern으로 선언하여 사용하기 때문이다.
 	if(strcmp(argv[1],"c")==0){
-		flashfp = fopen(argv[2],"w+b");
+		flashfp = fopen(argv[2],"w+");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed.");
 			exit(1);
@@ -45,48 +46,70 @@ int main(int argc, char *argv[])
 	}
 	// 페이지 쓰기: pagebuf의 섹터와 스페어에 각각 입력된 데이터를 정확히 저장하고 난 후 해당 인터페이스를 호출한다
 	else if(strcmp(argv[1],"w")==0){
-		flashfp = fopen(argv[2],"w+b");
+		flashfp = fopen(argv[2],"r+");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed");
 			exit(1);
 		}
 		int ppn = atoi(argv[3]);
-		strcpy(sectorbuf,argv[4]);
-		
-		char sparebuf[SPARE_SIZE];
-		strcpy(sparebuf,argv[5]);
 
-		memcpy(pagebuf,sectorbuf,sizeof(sectorbuf));	
-		memcpy(pagebuf+SECTOR_SIZE,sparebuf,sizeof(sparebuf));
-		printf("%s",pagebuf);
-		dd_write(ppn,pagebuf);
+		int sectorbufsize = strlen(argv[4]);
+		char *tempsectorbuf = (char*)malloc(sectorbufsize);//입력받은 sectorbuf
+		strcpy(tempsectorbuf,argv[4]);
+		printf("%d\n",sectorbufsize);
+		printf("%s\n",tempsectorbuf);
+		memcpy(pagebuf,tempsectorbuf,sectorbufsize);	
+		if(sectorbufsize<SECTOR_SIZE){
+			memset(pagebuf+sectorbufsize,0xFF,SECTOR_SIZE-sectorbufsize);
+		}
 		
+		int sparebufsize = strlen(argv[5]);
+		char *tempsparebuf = (char*)malloc(sparebufsize);
+		strcpy(tempsparebuf,argv[5]);
+		printf("%d\n",sparebufsize);
+		printf("%s\n",tempsparebuf);
+		memcpy(pagebuf+SECTOR_SIZE,tempsparebuf,sparebufsize);	
+		if(sparebufsize<SPARE_SIZE){
+			memset(pagebuf+SECTOR_SIZE+sparebufsize,0xFF,SPARE_SIZE-sparebufsize);
+		}
+
+		printf("%s",pagebuf);
+		free(tempsectorbuf);
+		free(tempsparebuf);
+		dd_write(ppn,pagebuf);
 		fclose(flashfp);
 	}
 	// 페이지 읽기: pagebuf를 인자로 사용하여 해당 인터페이스를 호출하여 페이지를 읽어 온 후 여기서 섹터 데이터와
 	//                  스페어 데이터를 분리해 낸다
 	// memset(), memcpy() 등의 함수를 이용하면 편리하다. 물론, 다른 방법으로 해결해도 무방하다.
 	else if(strcmp(argv[1],"r")==0){
-		flashfp = fopen(argv[2],"r+b");
+		flashfp = fopen(argv[2],"r+");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed");
 			exit(1);
 		}
 		int ppn = atoi(argv[3]);
 		dd_read(ppn,pagebuf);
-		memset(sectorbuf,0x00,SECTOR_SIZE);
-		char sparebuf[SPARE_SIZE];
-		memset(sparebuf,0x00,SPARE_SIZE);
-
-		memcpy(sectorbuf,pagebuf,SECTOR_SIZE);
-		memcpy(sparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);
-		
-		if(strcmp(sectorbuf,"0xFF")==0){
-			printf("%s",sectorbuf);
+//		char sparebuf[SPARE_SIZE];
+		char *tempsectorbuf = (char*)malloc(SECTOR_SIZE);
+		char *tempsparebuf = (char*)malloc(SPARE_SIZE);
+		memset(tempsectorbuf,0x00,SECTOR_SIZE);
+		memset(tempsparebuf,0x00,SPARE_SIZE);
+		memcpy(tempsectorbuf,pagebuf,SECTOR_SIZE);
+		memcpy(tempsparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);
+	
+		for(int i = 0; i < SECTOR_SIZE; i++){
+			if(tempsectorbuf[i]!=0x00){
+				printf("%c",tempsectorbuf[i]);
+			}
+			break;
+	
 		}
-		if(strcmp(sparebuf,"0xFF")==0){
+/*
+		if(strcmp(sparebuf,0xFF)==0){
 			printf("%s",sparebuf);
 		}
+		*/
 	}
 	
 	else if(strcmp(argv[1],"e")==0){
