@@ -52,7 +52,13 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		int ppn = atoi(argv[3]);
-
+		fseek(flashfp,0,SEEK_END);
+		int filesize = ftell(flashfp);
+		int pagenumber = filesize/PAGE_SIZE;
+		if(ppn >= pagenumber){
+			fprintf(stderr,"lack of pages");
+			exit(1);
+		}//페이지가 부족할 때 에러 출력
 		int sectorbufsize = strlen(argv[4]);
 		char *tempsectorbuf = (char*)malloc(sectorbufsize);//입력받은 sectorbuf
 		strcpy(tempsectorbuf,argv[4]);
@@ -74,6 +80,7 @@ int main(int argc, char *argv[])
 		}
 
 		printf("%s",pagebuf);
+		
 		free(tempsectorbuf);
 		free(tempsparebuf);
 		dd_write(ppn,pagebuf);
@@ -99,26 +106,30 @@ int main(int argc, char *argv[])
 		memcpy(tempsparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);
 	
 		for(int i = 0; i < SECTOR_SIZE; i++){
-			if(tempsectorbuf[i]!=0x00){
+			if(tempsectorbuf[i]!=0xFF){
 				printf("%c",tempsectorbuf[i]);
 			}
 		}
-/*
-		if(strcmp(sparebuf,0xFF)==0){
-			printf("%s",sparebuf);
+		printf("\n");
+		for(int i = 0; i < SPARE_SIZE; i++){
+			if(tempsparebuf[i]!=0xFF){
+				printf("%c",tempsparebuf[i]);
+			}
 		}
-		*/
+		free(tempsectorbuf);
+		free(tempsparebuf);
+		fclose(flashfp);
 	}
 	
 	else if(strcmp(argv[1],"e")==0){
-		flashfp = fopen(argv[2],"w+b");
+		flashfp = fopen(argv[2],"w+");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed");
 			exit(1);
 		}
 		int pbn = atoi(argv[3]);
 		dd_erase(pbn);
-		
+		fclose(flashfp);
 	}
 
 	return 0;
