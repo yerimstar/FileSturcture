@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 		}
 		int ppn = atoi(argv[3]);
 		dd_read(ppn,pagebuf);
-//		char sparebuf[SPARE_SIZE];
+		
 		char *tempsectorbuf = (char*)malloc(SECTOR_SIZE);
 		char *tempsparebuf = (char*)malloc(SPARE_SIZE);
 		memset(tempsectorbuf,0x00,SECTOR_SIZE);
@@ -102,8 +102,6 @@ int main(int argc, char *argv[])
 			if(tempsectorbuf[i]!=0x00){
 				printf("%c",tempsectorbuf[i]);
 			}
-			break;
-	
 		}
 /*
 		if(strcmp(sparebuf,0xFF)==0){
