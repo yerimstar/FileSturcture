@@ -21,27 +21,23 @@ int main(int argc, char *argv[])
 {	
 	char sectorbuf[SECTOR_SIZE],sparebuf[SPARE_SIZE];
 	char pagebuf[PAGE_SIZE];
-	char *blockbuf;
+	char blockbuf[BLOCK_SIZE];
 	
 	// flash memory 파일 생성: 위에서 선언한 flashfp를 사용하여 flash 파일을 생성한다. 그 이유는 fdevicedriver.c에서 
 	//                 flashfp 파일포인터를 extern으로 선언하여 사용하기 때문이다.
 	if(strcmp(argv[1],"c")==0){
-		flashfp = fopen(argv[2],"w+");
+		flashfp = fopen(argv[2],"w");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed.");
 			exit(1);
 		}
 		int blocksize = atoi(argv[3]);
-		int size = PAGE_NUM*PAGE_SIZE;
 
-		blockbuf = (char*)malloc(size);
-		memset(blockbuf,(char)0xFF,size);
+		memset(blockbuf,(char)0xFF,BLOCK_SIZE);
 		for(int i = 0; i < blocksize; i++){
-			fwrite(blockbuf,size,1,flashfp);
+			fwrite(blockbuf,BLOCK_SIZE,1,flashfp);
 		}
 	
-		free(blockbuf);
-		fclose(flashfp);
 	}
 	// 페이지 쓰기: pagebuf의 섹터와 스페어에 각각 입력된 데이터를 정확히 저장하고 난 후 해당 인터페이스를 호출한다
 	else if(strcmp(argv[1],"w")==0){
@@ -53,8 +49,8 @@ int main(int argc, char *argv[])
 		int ppn = atoi(argv[3]);
 		fseek(flashfp,0,SEEK_END);
 		int filesize = ftell(flashfp);
-		int pagenumber = filesize/PAGE_SIZE;//page의 개수 구하기 
-		if(ppn >= pagenumber){
+		int pagenumber = filesize/PAGE_SIZE;
+		if(ppn > pagenumber){
 			fprintf(stderr,"lack of pages");
 			exit(1);
 		}//ppn값보다 페이지가 부족할 때 에러 출력
@@ -72,15 +68,13 @@ int main(int argc, char *argv[])
 		memcpy(sparebuf,str2,strlen(str2));//sparebuf값 입력받기 
 		memcpy(pagebuf+SECTOR_SIZE,sparebuf,SPARE_SIZE);//pagebuf에 sparebuf값 복사 
 		
-		printf("%s",pagebuf);
 		dd_write(ppn,pagebuf);//pagebuf값을 파일에 쓰기 
-		fclose(flashfp);
 	}
 	// 페이지 읽기: pagebuf를 인자로 사용하여 해당 인터페이스를 호출하여 페이지를 읽어 온 후 여기서 섹터 데이터와
 	//                  스페어 데이터를 분리해 낸다
 	// memset(), memcpy() 등의 함수를 이용하면 편리하다. 물론, 다른 방법으로 해결해도 무방하다.
 	else if(strcmp(argv[1],"r")==0){
-		flashfp = fopen(argv[2],"r+");
+		flashfp = fopen(argv[2],"r");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed");
 			exit(1);
@@ -92,18 +86,23 @@ int main(int argc, char *argv[])
 		memset(sparebuf,0x00,SPARE_SIZE);//sparebuf에 있는 쓰레기값을 0x00으로 초기화 
 		memcpy(sectorbuf,pagebuf,SECTOR_SIZE);//pagebuf의 sector부분 복사 
 		memcpy(sparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);//pagebuf의 spare부분 복사 
+		char c = 0xFF;
+		char printsector[SECTOR_SIZE];
+		char printspare[SPARE_SIZE];
+
+		int j = 0;
 		for(int i = 0; i < SECTOR_SIZE; i++){//0xFF전까지 sectorbuf 출력
-			if(sectorbuf[i]!=0xFF){
-				printf("%c",sectorbuf[i]);
+			if(sectorbuf[i]!=c){
+				printsector[j++] = sectorbuf[i];
 			}
 		}
-		printf("\n");
+		j = 0;
 		for(int i = 0; i < SPARE_SIZE; i++){//0xFF전까지 sparebuf 출력
-			if(sparebuf[i]!=0xFF){
-				printf("%c",sparebuf[i]);
+			if(sparebuf[i]!=c){
+				printspare[j++] = sparebuf[i];
 			}
 		}
-		fclose(flashfp);
+		printf("%s %s",printsector,printspare);
 	}	
 	
 	else if(strcmp(argv[1],"e")==0){
@@ -114,8 +113,7 @@ int main(int argc, char *argv[])
 		}
 		int pbn = atoi(argv[3]);
 		dd_erase(pbn);
-		fclose(flashfp);
 	}
-
+	fclose(flashfp);
 	return 0;
 }
