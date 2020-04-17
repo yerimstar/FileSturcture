@@ -32,8 +32,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		int blocksize = atoi(argv[3]);
-		int pagesize = atoi(argv[4]);
-		int size = pagesize*PAGE_SIZE;
+		int size = PAGE_NUM*PAGE_SIZE;
 
 		blockbuf = (char*)malloc(size);
 		memset(blockbuf,(char)0xFF,size);
@@ -50,40 +49,35 @@ int main(int argc, char *argv[])
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed");
 			exit(1);
-		}
+		}//파일이 없으면 error출력
 		int ppn = atoi(argv[3]);
 		fseek(flashfp,0,SEEK_END);
 		int filesize = ftell(flashfp);
-		int pagenumber = filesize/PAGE_SIZE;
+		int pagenumber = filesize/PAGE_SIZE;//page의 개수 구하기 
 		if(ppn >= pagenumber){
 			fprintf(stderr,"lack of pages");
 			exit(1);
-		}//페이지가 부족할 때 에러 출력
+		}//ppn값보다 페이지가 부족할 때 에러 출력
 		int sectorbufsize = strlen(argv[4]);
-		char *tempsectorbuf = (char*)malloc(sectorbufsize);//입력받은 sectorbuf
-		strcpy(tempsectorbuf,argv[4]);
-		printf("%d\n",sectorbufsize);
-		printf("%s\n",tempsectorbuf);
-		memcpy(pagebuf,tempsectorbuf,sectorbufsize);	
+		char *tempsectorbuf = (char*)malloc(sectorbufsize);
+		strcpy(tempsectorbuf,argv[4]);//sectorbuf값 입력받기 
+		memcpy(pagebuf,tempsectorbuf,sectorbufsize);//pagebuf에 sectorbuf값 복사
 		if(sectorbufsize<SECTOR_SIZE){
 			memset(pagebuf+sectorbufsize,0xFF,SECTOR_SIZE-sectorbufsize);
-		}
+		}//sectorbuf가 512B보다 작으면 나머지 값들 0xFF로 초기화
 		
 		int sparebufsize = strlen(argv[5]);
 		char *tempsparebuf = (char*)malloc(sparebufsize);
-		strcpy(tempsparebuf,argv[5]);
-		printf("%d\n",sparebufsize);
-		printf("%s\n",tempsparebuf);
-		memcpy(pagebuf+SECTOR_SIZE,tempsparebuf,sparebufsize);	
+		strcpy(tempsparebuf,argv[5]);//sparebuf값 입력받기 
+		memcpy(pagebuf+SECTOR_SIZE,tempsparebuf,sparebufsize);//pagebuf에 sparebuf값 복사 
 		if(sparebufsize<SPARE_SIZE){
 			memset(pagebuf+SECTOR_SIZE+sparebufsize,0xFF,SPARE_SIZE-sparebufsize);
-		}
-
-		printf("%s",pagebuf);
+		}//sparebuf가 16B보다 작으면 나머지 값들 0xFF로 초기화
 		
 		free(tempsectorbuf);
 		free(tempsparebuf);
-		dd_write(ppn,pagebuf);
+		printf("%s",pagebuf);
+		dd_write(ppn,pagebuf);//pagebuf값을 파일에 쓰기 
 		fclose(flashfp);
 	}
 	// 페이지 읽기: pagebuf를 인자로 사용하여 해당 인터페이스를 호출하여 페이지를 읽어 온 후 여기서 섹터 데이터와
@@ -96,22 +90,22 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		int ppn = atoi(argv[3]);
-		dd_read(ppn,pagebuf);
+		dd_read(ppn,pagebuf);//pagebuf에 파일 값 읽기
 		
 		char *tempsectorbuf = (char*)malloc(SECTOR_SIZE);
 		char *tempsparebuf = (char*)malloc(SPARE_SIZE);
-		memset(tempsectorbuf,0x00,SECTOR_SIZE);
-		memset(tempsparebuf,0x00,SPARE_SIZE);
-		memcpy(tempsectorbuf,pagebuf,SECTOR_SIZE);
-		memcpy(tempsparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);
+		memset(tempsectorbuf,0x00,SECTOR_SIZE);//tempsectorbuf에 있는 쓰레기값을 0x00으로 초기화
+		memset(tempsparebuf,0x00,SPARE_SIZE);//tempsparebuf에 있는 쓰레기값을 0x00으로 초기화 
+		memcpy(tempsectorbuf,pagebuf,SECTOR_SIZE);//pagebuf의 sector부분 복사 
+		memcpy(tempsparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);//pagebuf의 spare부분 복사 
 	
-		for(int i = 0; i < SECTOR_SIZE; i++){
+		for(int i = 0; i < SECTOR_SIZE; i++){//0xFF전까지 tempsectorbuf 출력
 			if(tempsectorbuf[i]!=0xFF){
 				printf("%c",tempsectorbuf[i]);
 			}
 		}
 		printf("\n");
-		for(int i = 0; i < SPARE_SIZE; i++){
+		for(int i = 0; i < SPARE_SIZE; i++){//0xFF전까지 tempsparebuf 출력
 			if(tempsparebuf[i]!=0xFF){
 				printf("%c",tempsparebuf[i]);
 			}
