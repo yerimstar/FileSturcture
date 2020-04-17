@@ -19,7 +19,7 @@ int dd_read(int ppn, char *pagebuf);
 // 
 int main(int argc, char *argv[])
 {	
-	char sectorbuf[SECTOR_SIZE];
+	char sectorbuf[SECTOR_SIZE],sparebuf[SPARE_SIZE];
 	char pagebuf[PAGE_SIZE];
 	char *blockbuf;
 	
@@ -58,24 +58,20 @@ int main(int argc, char *argv[])
 			fprintf(stderr,"lack of pages");
 			exit(1);
 		}//ppn값보다 페이지가 부족할 때 에러 출력
-		int sectorbufsize = strlen(argv[4]);
-		char *tempsectorbuf = (char*)malloc(sectorbufsize);
-		strcpy(tempsectorbuf,argv[4]);//sectorbuf값 입력받기 
-		memcpy(pagebuf,tempsectorbuf,sectorbufsize);//pagebuf에 sectorbuf값 복사
-		if(sectorbufsize<SECTOR_SIZE){
-			memset(pagebuf+sectorbufsize,0xFF,SECTOR_SIZE-sectorbufsize);
-		}//sectorbuf가 512B보다 작으면 나머지 값들 0xFF로 초기화
+		memset(sectorbuf,(char)0xFF,SECTOR_SIZE);
+		memset(sparebuf,(char)0xFF,SPARE_SIZE);
+		memset(pagebuf,(char)0xFF,PAGE_SIZE);
 		
-		int sparebufsize = strlen(argv[5]);
-		char *tempsparebuf = (char*)malloc(sparebufsize);
-		strcpy(tempsparebuf,argv[5]);//sparebuf값 입력받기 
-		memcpy(pagebuf+SECTOR_SIZE,tempsparebuf,sparebufsize);//pagebuf에 sparebuf값 복사 
-		if(sparebufsize<SPARE_SIZE){
-			memset(pagebuf+SECTOR_SIZE+sparebufsize,0xFF,SPARE_SIZE-sparebufsize);
-		}//sparebuf가 16B보다 작으면 나머지 값들 0xFF로 초기화
+		char str1[512];
+		strcpy(str1,argv[4]);
+		memcpy(sectorbuf,str1,strlen(str1));//sectorbuf값 입력받기
+		memcpy(pagebuf,sectorbuf,SECTOR_SIZE);//pagebuf에 sectorbuf값 복사
 		
-		free(tempsectorbuf);
-		free(tempsparebuf);
+		char str2[16];
+		strcpy(str2,argv[5]);
+		memcpy(sparebuf,str2,strlen(str2));//sparebuf값 입력받기 
+		memcpy(pagebuf+SECTOR_SIZE,sparebuf,SPARE_SIZE);//pagebuf에 sparebuf값 복사 
+		
 		printf("%s",pagebuf);
 		dd_write(ppn,pagebuf);//pagebuf값을 파일에 쓰기 
 		fclose(flashfp);
@@ -92,31 +88,26 @@ int main(int argc, char *argv[])
 		int ppn = atoi(argv[3]);
 		dd_read(ppn,pagebuf);//pagebuf에 파일 값 읽기
 		
-		char *tempsectorbuf = (char*)malloc(SECTOR_SIZE);
-		char *tempsparebuf = (char*)malloc(SPARE_SIZE);
-		memset(tempsectorbuf,0x00,SECTOR_SIZE);//tempsectorbuf에 있는 쓰레기값을 0x00으로 초기화
-		memset(tempsparebuf,0x00,SPARE_SIZE);//tempsparebuf에 있는 쓰레기값을 0x00으로 초기화 
-		memcpy(tempsectorbuf,pagebuf,SECTOR_SIZE);//pagebuf의 sector부분 복사 
-		memcpy(tempsparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);//pagebuf의 spare부분 복사 
-	
-		for(int i = 0; i < SECTOR_SIZE; i++){//0xFF전까지 tempsectorbuf 출력
-			if(tempsectorbuf[i]!=0xFF){
-				printf("%c",tempsectorbuf[i]);
+		memset(sectorbuf,0x00,SECTOR_SIZE);//sectorbuf에 있는 쓰레기값을 0x00으로 초기화
+		memset(sparebuf,0x00,SPARE_SIZE);//sparebuf에 있는 쓰레기값을 0x00으로 초기화 
+		memcpy(sectorbuf,pagebuf,SECTOR_SIZE);//pagebuf의 sector부분 복사 
+		memcpy(sparebuf,pagebuf+SECTOR_SIZE,SPARE_SIZE);//pagebuf의 spare부분 복사 
+		for(int i = 0; i < SECTOR_SIZE; i++){//0xFF전까지 sectorbuf 출력
+			if(sectorbuf[i]!=0xFF){
+				printf("%c",sectorbuf[i]);
 			}
 		}
 		printf("\n");
-		for(int i = 0; i < SPARE_SIZE; i++){//0xFF전까지 tempsparebuf 출력
-			if(tempsparebuf[i]!=0xFF){
-				printf("%c",tempsparebuf[i]);
+		for(int i = 0; i < SPARE_SIZE; i++){//0xFF전까지 sparebuf 출력
+			if(sparebuf[i]!=0xFF){
+				printf("%c",sparebuf[i]);
 			}
 		}
-		free(tempsectorbuf);
-		free(tempsparebuf);
 		fclose(flashfp);
-	}
+	}	
 	
 	else if(strcmp(argv[1],"e")==0){
-		flashfp = fopen(argv[2],"w+");
+		flashfp = fopen(argv[2],"r+");
 		if(flashfp == NULL){
 			fprintf(stderr,"file open is failed");
 			exit(1);
