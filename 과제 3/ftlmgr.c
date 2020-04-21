@@ -47,19 +47,84 @@ int main(int argc, char *argv[])
 			exit(1);
 		}//파일이 없으면 error출력
 		int ppn = atoi(argv[3]);
+		int pbn = ppn/PAGE_NUM;
 		fseek(flashfp,0,SEEK_END);
 		int filesize = ftell(flashfp);
 		int pagenumber = filesize/PAGE_SIZE;
+		int blocknumber = filesize/BLOCK_SIZE;
+		int freeblock = -1;
+		int offset = ppn%PAGE_NUM;
+		char ch = 0xFF;
+		int pagenum;
+		fseek(flashfp,0,SEEK_SET);
+		int i = 0;
+		for(i = 0; i < blocknumber; i++){
+			fseek(flashfp, i*BLOCK_SIZE, SEEK_SET);
+
+			for(int j =0; j <= PAGE_NUM; j++){
+				char c;
+				if((c= fgetc(flashfp)) != ch)
+					break;
+				fseek(flashfp, SECTOR_SIZE-1,SEEK_CUR);
+				if((c = fgetc(flashfp)) != ch)
+					break;
+				fseek(flashfp, SPARE_SIZE -1, SEEK_CUR);
+
+				if(j== PAGE_NUM){
+					freeblock = i;
+					break;
+				}
+			}
+			if(freeblock == i)
+				break;
+		}
+
 		if(ppn >= pagenumber){
 			fprintf(stderr,"lack of pages");
 			exit(1);
 		}//ppn값보다 페이지가 부족할 때 에러 출력
-		memset(pagebuf,(char)0xFF,PAGE_SIZE);
+	
+		dd_read(ppn,pagebuf);
+		if(pagebuf[SECTOR_SIZE] == -1){
+			memset(pagebuf,(char)0xFF,PAGE_SIZE);
+			memcpy(pagebuf,argv[4],strlen(argv[4]));//sectorbuf값 입력받기
+			memcpy(pagebuf+SECTOR_SIZE,argv[5],strlen(argv[5]));//sparebuf값 입력받기 
+			dd_write(ppn,pagebuf);//pagebuf값을 파일에 쓰기 
+		}
 		
-		memcpy(pagebuf,argv[4],strlen(argv[4]));//sectorbuf값 입력받기
-		memcpy(pagebuf+SECTOR_SIZE,argv[5],strlen(argv[5]));//sparebuf값 입력받기 
-		dd_write(ppn,pagebuf);//pagebuf값을 파일에 쓰기 
+		else{
+			fseek(flashfp,BLOCK_SIZE*pbn,SEEK_SET);
+			for(int i = 0; i < PAGE_NUM; i++){
+				fseek(flashfp,BLOCK_SIZE*pbn+i*PAGE_SIZE,SEEK_SET);
+				pagenum = ftell(flashfp)/PAGE_SIZE;
+				if(i != offset){	
+					dd_read(pagenum,pagebuf);
+					dd_write(PAGE_NUM*freeblock+i,pagebuf);
+				}
+			}
+			
+			dd_erase(pbn);
+
+			memset(pagebuf,(char)0xFF,PAGE_SIZE);
+			fseek(flashfp,BLOCK_SIZE*pbn,SEEK_SET);
+			for(int i = 0; i < PAGE_NUM; i++){
+				memset(pagebuf,(char)0xFF,PAGE_SIZE);
+				pagenum = ftell(flashfp)/PAGE_SIZE;
+				if(i == offset){
+					memcpy(pagebuf,argv[4],strlen(argv[4]));
+					memcpy(pagebuf+SECTOR_SIZE,argv[5],strlen(argv[5]));
+					dd_write(ppn,pagebuf);
+				}
+				else{
+					dd_read(PAGE_NUM*freeblock+i,pagebuf);
+					dd_write(pagenum,pagebuf);
+				}
+			}
+			dd_erase(freeblock);
+			}
+	
 	}
+
 	// 페이지 읽기: pagebuf를 인자로 사용하여 해당 인터페이스를 호출하여 페이지를 읽어 온 후 여기서 섹터 데이터와
 	//                  스페어 데이터를 분리해 낸다
 	// memset(), memcpy() 등의 함수를 이용하면 편리하다. 물론, 다른 방법으로 해결해도 무방하다.
