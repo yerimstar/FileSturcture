@@ -63,18 +63,20 @@ void ftl_open()
 
 void ftl_read(int lsn, char *sectorbuf)
 {
-	char *pagebuf = (char*)malloc(PAGE_SIZE);
+	char pagebuf[PAGE_SIZE];
 	int ppn = sectormap.entry[lsn].ppn;
 	if(ppn == -1){
 		printf("아직 매핑되어있는 값이 없습니다.\n");
 		return;
 	}
-	memset(sectorbuf,(char)0xFF,SECTOR_SIZE);
-	memset(pagebuf,(char)0xFF,PAGE_SIZE);
+	else{
+		memset(sectorbuf,(char)0xFF,SECTOR_SIZE);
+		memset(pagebuf,(char)0xFF,PAGE_SIZE);
 	
-	dd_read(ppn,pagebuf);
-	memcpy(sectorbuf,pagebuf,SECTOR_SIZE);
-	return;
+		dd_read(ppn,pagebuf);
+		memcpy(sectorbuf,pagebuf,SECTOR_SIZE);
+		return;
+	}
 }
 
 void ftl_write(int lsn, char *sectorbuf)
