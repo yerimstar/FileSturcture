@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -38,24 +38,31 @@ int main(int argc, char *argv[])
 	ftl_write(2, "nct127");
 	ftl_write(2, "nctdream");
 	ftl_write(5, "ridin");
-	ftl_write(0, "renjun");
+	ftl_read(3,sectorbuf);
+	ftl_write(7, "hello");
 	ftl_write(4, "jeno smile");
 	ftl_write(0, "I love jisung");
 	ftl_write(6, "fullsun");
+/*	ftl_write(8, "chewing gum");
+	ftl_write(9, "my first and last");
+	ftl_write(10, "we young");
+	ftl_write(11,"go");
+	ftl_write(12,"we go up");
+	ftl_write(13,"boom");
+	ftl_write(14,"ridin");
+	ftl_write(15,"quiet down");
+	*/
 
-	ftl_print();
-
-	ftl_write(7, "hello");
-
-	ftl_print();
-
+	ftl_write(7, "renjun");
 	ftl_write(3, "music star chenle");
-	ftl_print();
-
 	ftl_write(1, "nana the rabit");
+	
 	ftl_print();
-
-	ftl_read(6, sectorbuf);
+	
+//	for(int i  = 0; i < DATAPAGES_PER_DEVICE; i++){
+//		ftl_read(i,sectorbuf);
+//		printf("%s\n",sectorbuf);
+//	}
 	fclose(flashfp);
 
 	return 0;
